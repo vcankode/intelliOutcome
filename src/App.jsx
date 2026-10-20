@@ -1,4 +1,6 @@
 import { useState } from "react";
+import Landing from "../Landing.jsx";
+import UserTypeSelect from "../UserTypeSelect.jsx";
 
 const menuItems = [
   { name: "Dashboard", icon: "⌂" },
@@ -38,39 +40,32 @@ const courses = [
 function App() {
   const [started, setStarted] = useState(false);
   const [activePage, setActivePage] = useState("Dashboard");
+  const [currentScreen, setCurrentScreen] = useState("landing");
 
-  if (!started) {
+  
+  if (currentScreen === "landing") {
     return (
-      <div className="min-h-screen bg-[#f5f7fb] flex items-center justify-center p-6">
-        <div className="absolute top-0 left-0 w-full h-2 bg-[#1d3968]" />
-
-        <div className="bg-white w-full max-w-xl rounded-3xl shadow-xl border border-gray-200 p-12 text-center">
-          <div className="mx-auto mb-7 w-20 h-20 rounded-2xl bg-[#1d3968] flex items-center justify-center text-white text-3xl font-bold">
-            IO
-          </div>
-
-          <h1 className="text-5xl font-bold text-[#1d3968] tracking-tight">
-            IntelliOutcome
-          </h1>
-
-          <p className="mt-4 text-gray-500 text-lg">
-            AI-Powered CO–PO Attainment & Academic Analytics
-          </p>
-
-          <p className="mt-3 text-gray-400">
-            Smart academic outcome analysis for teachers and institutions.
-          </p>
-
-          <button
-            onClick={() => setStarted(true)}
-            className="mt-9 px-10 py-4 bg-[#1d3968] text-white rounded-xl font-semibold text-lg hover:bg-[#152c52] transition shadow-lg"
-          >
-            Get Started →
-          </button>
-        </div>
-      </div>
+      <Landing
+        onLogin={() => setCurrentScreen("userType")}
+        onSignup={() => setCurrentScreen("userType")}
+      />
     );
   }
+
+  if (currentScreen === "userType") {
+    return (
+      <UserTypeSelect
+        onSelect={(type) => {
+          if (type === "teacher") {
+            window.location.href = "/teacher_login.html";
+          } else {
+            alert("Admin login will be connected next.");
+          }
+        }}
+      />
+    );
+  }
+
 
   return (
     <div className="min-h-screen bg-[#f5f7fb] flex">
@@ -884,38 +879,265 @@ function AIBox({ title, description, recommendation }) {
 }
 
 
+const TARGET = 70;
+
+const sampleScores = {
+  CO1: [82, 75, 91, 68, 77, 84, 72, 88, 65, 79, 81, 73, 94, 70, 86, 78, 83, 67, 90, 76, 85, 71, 80, 74, 89],
+  CO2: [76, 81, 84, 69, 73, 78, 88, 71, 65, 82, 79, 74, 90, 68, 85, 77, 80, 72, 86, 75, 83, 70, 78, 81, 74],
+  CO3: [65, 72, 68, 61, 75, 69, 73, 64, 58, 71, 67, 62, 79, 66, 70, 63, 74, 60, 76, 68, 72, 65, 69, 71, 64],
+  CO4: [88, 82, 91, 76, 85, 79, 87, 90, 72, 84, 81, 78, 94, 75, 89, 83, 86, 77, 92, 80, 88, 74, 85, 82, 90],
+};
+
+const sampleStudentMarks = Array.from({ length: 25 }, (_, i) => ({
+  student: `Student ${String(i + 1).padStart(2, "0")}`,
+  CO1: sampleScores.CO1[i],
+  CO2: sampleScores.CO2[i],
+  CO3: sampleScores.CO3[i],
+  CO4: sampleScores.CO4[i],
+}));
+
+// Mapping strength: 0 = not mapped, 1 = low, 2 = medium, 3 = high.
+const coPoMapping = {
+  CO1: { PO1: 3, PO2: 2, PO3: 0, PO4: 0 },
+  CO2: { PO1: 2, PO2: 3, PO3: 2, PO4: 0 },
+  CO3: { PO1: 1, PO2: 2, PO3: 3, PO4: 2 },
+  CO4: { PO1: 2, PO2: 1, PO3: 2, PO4: 3 },
+};
+
+function calculateCOAttainment() {
+  return Object.keys(sampleScores).map((co) => {
+    const total = sampleStudentMarks.reduce(
+      (sum, student) => sum + student[co],
+      0
+    );
+
+    return {
+      name: co,
+      attainment: total / sampleStudentMarks.length,
+      target: TARGET,
+    };
+  });
+}
+
+function calculatePOAttainment(coResults) {
+  return ["PO1", "PO2", "PO3", "PO4"].map((po) => {
+    let weightedTotal = 0;
+    let totalWeight = 0;
+
+    coResults.forEach((co) => {
+      const weight = coPoMapping[co.name][po];
+
+      if (weight > 0) {
+        weightedTotal += co.attainment * weight;
+        totalWeight += weight;
+      }
+    });
+
+    return {
+      name: po,
+      attainment: totalWeight > 0 ? weightedTotal / totalWeight : 0,
+      target: TARGET,
+    };
+  });
+}
+
+
 function Reports() {
+  const [showReport, setShowReport] = useState(false);
+
+  const coResults = calculateCOAttainment();
+  const poResults = calculatePOAttainment(coResults);
+  const allResults = [...coResults, ...poResults];
+
+  const average = (results) =>
+    results.reduce((sum, item) => sum + item.attainment, 0) /
+    results.length;
+
+  const averageCO = average(coResults);
+  const averagePO = average(poResults);
+
+  const renderTable = (title, results) => (
+    <div className="bg-white border border-gray-200 rounded-2xl p-6">
+      <h3 className="text-lg font-bold text-gray-800 mb-4">
+        {title}
+      </h3>
+
+      <div className="overflow-x-auto">
+        <table className="w-full text-sm">
+          <thead className="bg-gray-50">
+            <tr>
+              <th className="p-3 text-left">Outcome</th>
+              <th className="p-3 text-right">Attainment</th>
+              <th className="p-3 text-right">Target</th>
+              <th className="p-3 text-left">Status</th>
+            </tr>
+          </thead>
+
+          <tbody>
+            {results.map((item) => {
+              const belowTarget = item.attainment < item.target;
+
+              return (
+                <tr key={item.name} className="border-t border-gray-100">
+                  <td className="p-3 font-semibold">{item.name}</td>
+
+                  <td
+                    className={`p-3 text-right font-bold ${
+                      belowTarget ? "text-red-600" : "text-green-700"
+                    }`}
+                  >
+                    {item.attainment.toFixed(1)}%
+                  </td>
+
+                  <td className="p-3 text-right">
+                    {item.target}%
+                  </td>
+
+                  <td className="p-3">
+                    <span
+                      className={`font-semibold ${
+                        belowTarget ? "text-red-600" : "text-green-700"
+                      }`}
+                    >
+                      {belowTarget ? "Below target" : "Target met"}
+                    </span>
+                  </td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  );
+
   return (
-    <Page title="Reports" subtitle="Generate academic outcome reports.">
+    <Page
+      title="CO–PO Attainment Report"
+      subtitle="Outcome performance calculated from sample marks for 25 students."
+    >
+      <div className="mb-6 flex flex-wrap items-center justify-between gap-4">
+        <div>
+          <p className="text-sm text-gray-500">
+            Demonstration data · Target: {TARGET}%
+          </p>
+          <p className="text-xs text-gray-400 mt-1">
+            These are sample results, not official institutional data.
+          </p>
+        </div>
 
-      <div className="grid md:grid-cols-3 gap-5">
+        <button
+          onClick={() => setShowReport((previous) => !previous)}
+          className="bg-[#1d3968] text-white px-6 py-3 rounded-xl font-semibold hover:bg-[#152c52]"
+        >
+          {showReport ? "Hide Report" : "Generate CO–PO Report"}
+        </button>
+      </div>
 
-        {[
-          ["CO Attainment Report", "Complete CO-wise attainment analysis"],
-          ["PO Attainment Report", "Program outcome contribution"],
-          ["Question Paper Analysis", "Coverage and Bloom's distribution"],
-        ].map(([title, description]) => (
-          <div
-            key={title}
-            className="bg-white border border-gray-200 rounded-2xl p-6"
-          >
-            <div className="text-3xl">▥</div>
+      {showReport && (
+        <div className="space-y-6">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
+            <StatCard
+              title="Average CO Attainment"
+              value={`${averageCO.toFixed(1)}%`}
+              subtitle={`Across ${coResults.length} course outcomes`}
+              icon="◒"
+              positive={averageCO >= TARGET}
+              warning={averageCO < TARGET}
+            />
 
-            <h3 className="font-bold text-gray-800 mt-5">
-              {title}
+            <StatCard
+              title="Average PO Attainment"
+              value={`${averagePO.toFixed(1)}%`}
+              subtitle={`Across ${poResults.length} program outcomes`}
+              icon="◎"
+              positive={averagePO >= TARGET}
+              warning={averagePO < TARGET}
+            />
+
+            <StatCard
+              title="Students Included"
+              value={String(sampleStudentMarks.length)}
+              subtitle="Sample student records"
+              icon="♙"
+            />
+          </div>
+
+          {renderTable("Course Outcome (CO) Attainment", coResults)}
+
+          {renderTable("Program Outcome (PO) Attainment", poResults)}
+
+          <div className="bg-white border border-gray-200 rounded-2xl p-6">
+            <h3 className="text-lg font-bold text-gray-800">
+              CO and PO Attainment Comparison
             </h3>
 
-            <p className="text-sm text-gray-400 mt-2">
-              {description}
+            <p className="text-sm text-gray-500 mt-1 mb-6">
+              Each bar uses the same calculated value shown in the tables.
+              The dashed line represents the {TARGET}% target.
             </p>
 
-            <button className="mt-5 w-full border border-[#1d3968] text-[#1d3968] py-2.5 rounded-lg font-semibold">
-              Generate Report
-            </button>
-          </div>
-        ))}
+            <div className="flex flex-wrap gap-5 text-sm mb-6">
+              <span className="flex items-center gap-2">
+                <span className="w-3 h-3 rounded-sm bg-[#1d3968]" />
+                Target met
+              </span>
+              <span className="flex items-center gap-2">
+                <span className="w-3 h-3 rounded-sm bg-red-500" />
+                Below target
+              </span>
+            </div>
 
-      </div>
+            <div className="space-y-5">
+              {allResults.map((item) => {
+                const belowTarget = item.attainment < item.target;
+
+                return (
+                  <div key={item.name}>
+                    <div className="flex justify-between gap-3 text-sm mb-2">
+                      <span className="font-semibold text-gray-700">
+                        {item.name}
+                      </span>
+                      <span
+                        className={`font-bold ${
+                          belowTarget ? "text-red-600" : "text-gray-700"
+                        }`}
+                      >
+                        {item.attainment.toFixed(1)}%
+                      </span>
+                    </div>
+
+                    <div className="relative h-4 rounded-full bg-gray-100 overflow-hidden">
+                      <div
+                        className={`h-full rounded-full ${
+                          belowTarget ? "bg-red-500" : "bg-[#1d3968]"
+                        }`}
+                        style={{
+                          width: `${Math.max(
+                            0,
+                            Math.min(100, item.attainment)
+                          )}%`,
+                        }}
+                      />
+
+                      <div
+                        className="absolute top-0 bottom-0 border-l-2 border-dashed border-orange-500"
+                        style={{ left: `${TARGET}%` }}
+                        title={`Target: ${TARGET}%`}
+                      />
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+
+            <p className="text-xs text-gray-400 mt-5">
+              CO values are mean student scores. PO values are weighted
+              averages based on the demonstration CO–PO mapping matrix.
+            </p>
+          </div>
+        </div>
+      )}
     </Page>
   );
 }
