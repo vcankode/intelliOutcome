@@ -1,7 +1,8 @@
 import { useState } from "react";
 import Landing from "../Landing.jsx";
 import UserTypeSelect from "../UserTypeSelect.jsx";
-
+import TeacherAuth from "./TeacherAuth.jsx";
+import AdminAuth from "./AdminAuth.jsx";
 const menuItems = [
   { name: "Dashboard", icon: "⌂" },
   { name: "My Courses", icon: "▣" },
@@ -57,15 +58,30 @@ function App() {
       <UserTypeSelect
         onSelect={(type) => {
           if (type === "teacher") {
-            window.location.href = "/teacher_login.html";
+            setCurrentScreen("teacherAuth");
           } else {
-            alert("Admin login will be connected next.");
+           setCurrentScreen("adminAuth");
           }
         }}
       />
     );
   }
-
+  if (currentScreen === "teacherAuth") {
+      return (
+        <TeacherAuth
+          onLoginSuccess={() => setCurrentScreen("dashboard")}
+        />
+      );
+  }
+  if (currentScreen === "adminAuth") {
+  return (
+    <AdminAuth
+      onLoginSuccess={() => {
+        window.location.href = "/admin-dashboard/index.html";
+      }}
+    />
+  );
+}
 
   return (
     <div className="min-h-screen bg-[#f5f7fb] flex">
