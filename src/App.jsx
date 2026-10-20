@@ -3,6 +3,8 @@ import Landing from "../Landing.jsx";
 import UserTypeSelect from "../UserTypeSelect.jsx";
 import TeacherAuth from "./TeacherAuth.jsx";
 import AdminAuth from "./AdminAuth.jsx";
+import CourseSetup from "./CourseSetup.jsx";
+
 const menuItems = [
   { name: "Dashboard", icon: "⌂" },
   { name: "My Courses", icon: "▣" },
@@ -13,7 +15,6 @@ const menuItems = [
   { name: "AI Insights", icon: "✦" },
   { name: "Reports", icon: "▥" },
 ];
-
 const courses = [
   {
     code: "CS301",
@@ -39,7 +40,7 @@ const courses = [
 ];
 
 function App() {
-  const [started, setStarted] = useState(false);
+    const [selection, setSelection] = useState(null);
   const [activePage, setActivePage] = useState("Dashboard");
   const [currentScreen, setCurrentScreen] = useState("landing");
 
@@ -69,7 +70,7 @@ function App() {
   if (currentScreen === "teacherAuth") {
       return (
         <TeacherAuth
-          onLoginSuccess={() => setCurrentScreen("dashboard")}
+                    onLoginSuccess={() => setCurrentScreen("courseSetup")}
         />
       );
   }
@@ -82,6 +83,20 @@ function App() {
     />
   );
 }
+  if (currentScreen === "courseSetup" || !selection) {
+    return (
+      <CourseSetup
+        initial={selection}
+        backLabel={selection ? "← Back to dashboard" : "← Back to login"}
+        onBack={() => setCurrentScreen(selection ? "dashboard" : "teacherAuth")}
+        onContinue={(sel) => {
+          setSelection(sel);
+          setActivePage("Dashboard");
+          setCurrentScreen("dashboard");
+        }}
+      />
+    );
+  }
 
   return (
     <div className="min-h-screen bg-[#f5f7fb] flex">
@@ -158,17 +173,27 @@ function App() {
             </h2>
 
             <p className="text-sm text-gray-400">
-              Academic Session 2026–27
+              Academic Session {selection.session}
             </p>
           </div>
 
           <div className="flex items-center gap-5">
 
-            <select className="border border-gray-200 rounded-lg px-4 py-2 text-sm bg-white">
-              <option>Semester VI</option>
-              <option>Semester V</option>
-              <option>Semester IV</option>
-            </select>
+                       <div className="text-right hidden md:block">
+              <p className="text-sm font-semibold text-gray-700">
+                {selection.courseCode} · Section {selection.section}
+              </p>
+              <p className="text-xs text-gray-400">
+                {selection.programName} {selection.branchCode} · {selection.semesterLabel}
+              </p>
+            </div>
+
+            <button
+              onClick={() => setCurrentScreen("courseSetup")}
+              className="border border-gray-200 rounded-lg px-4 py-2 text-sm text-[#1d3968] font-semibold hover:bg-gray-50"
+            >
+              Change course
+            </button>
 
             <button className="relative text-gray-500 text-xl">
               ♢
@@ -185,16 +210,16 @@ function App() {
         <div className="p-8">
 
           {activePage === "Dashboard" && (
-            <Dashboard setActivePage={setActivePage} />
+            <Dashboard setActivePage={setActivePage} selection={selection} />
           )}
 
-          {activePage === "My Courses" && <Courses />}
+          {activePage === "My Courses" && <Courses selection={selection} />}
 
           {activePage === "Question Papers" && <QuestionPapers />}
 
           {activePage === "CO–PO Mapping" && <Mapping />}
 
-          {activePage === "Students & Marks" && <Students />}
+          {activePage === "Students & Marks" && <Students selection={selection} />}
 
           {activePage === "Attainment" && <Attainment />}
 
@@ -211,7 +236,15 @@ function App() {
 
 /* ================= DASHBOARD ================= */
 
-function Dashboard({ setActivePage }) {
+function Dashboard({ setActivePage, selection }) {
+  const selectedCourse = {
+    code: selection.courseCode,
+    name: selection.courseTitle,
+    students: 60, // sample value until the backend gives the real roster
+    attainment: 78,
+    color: "bg-blue-600",
+  };
+
   return (
     <>
       <div className="mb-8">
@@ -220,7 +253,9 @@ function Dashboard({ setActivePage }) {
         </h1>
 
         <p className="text-gray-500 mt-2">
-          Here's what's happening with your courses and academic outcomes.
+          Here's what's happening in {selection.courseCode} · {selection.courseTitle},
+          Section {selection.section} ({selection.programName} {selection.branchCode},{" "}
+          {selection.semesterLabel}).
         </p>
       </div>
 
@@ -229,16 +264,16 @@ function Dashboard({ setActivePage }) {
       <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-5">
 
         <StatCard
-          title="My Courses"
-          value="3"
-          subtitle="Active courses"
+          title="Selected Course"
+          value={selection.courseCode}
+          subtitle={`${selection.credits} credits · Section ${selection.section}`}
           icon="▣"
         />
 
         <StatCard
           title="Total Students"
-          value="181"
-          subtitle="Across all sections"
+          value="60"
+          subtitle={`Section ${selection.section}`}
           icon="♙"
         />
 
@@ -411,18 +446,18 @@ function Dashboard({ setActivePage }) {
 
       </div>
 
-      {/* COURSES */}
+      {/* SELECTED COURSE */}
 
       <div className="mt-8">
 
         <div className="flex justify-between items-center mb-5">
           <div>
             <h2 className="text-xl font-bold text-gray-800">
-              My Courses
+              Selected Course
             </h2>
 
             <p className="text-sm text-gray-400">
-              Your currently assigned courses
+              The class you are working on
             </p>
           </div>
 
@@ -435,9 +470,7 @@ function Dashboard({ setActivePage }) {
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
-          {courses.map((course) => (
-            <CourseCard key={course.code} course={course} />
-          ))}
+          <CourseCard course={selectedCourse} />
         </div>
 
       </div>
@@ -701,7 +734,7 @@ function Mapping() {
 }
 
 
-function Students() {
+function Students({ selection }){
   return (
     <Page title="Students & Marks" subtitle="Manage student marks and assessment data.">
 
@@ -714,7 +747,7 @@ function Students() {
             </h3>
 
             <p className="text-sm text-gray-400">
-              CS301 · Section A
+              {selection.courseCode} · Section {selection.section}
             </p>
           </div>
 
